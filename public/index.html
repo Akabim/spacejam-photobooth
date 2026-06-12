@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceJam Photobooth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sjyellow: '#F3C300',
+                        sjblack: '#000000',
+                    },
+                    fontFamily: {
+                        'franklin': ['"Franklin Gothic Demi"', 'sans-serif'],
+                        'optidom': ['"OPTIDom Diagonal"', 'cursive'],
+                        'space': ['"Space Grotesk"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @font-face {
+            font-family: 'Franklin Gothic Demi';
+            src: url('assets/franklingothic_demi.ttf') format('truetype');
+        }
+        @font-face {
+            font-family: 'OPTIDom Diagonal';
+            src: url('assets/OPTIDom-Diagonal.otf') format('opentype');
+        }
+
+        #flash {
+            transition: opacity 0.1s ease-out;
+        }
+        #flash.active {
+            opacity: 1 !important;
+        }
+        
+        .loader {
+            width: 40px; height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.2);
+            border-top: 4px solid #000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @keyframes rotateSlow {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(5deg) scale(1.05); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        .starburst {
+            animation: rotateSlow 4s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+        @keyframes printOut {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(0); }
+        }
+        .animate-print {
+            animation: printOut 3.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        @keyframes slidePrinter {
+            0%, 60% { transform: translateX(350px); }
+            100% { transform: translateX(0); }
+        }
+        .animate-slide-printer {
+            animation: slidePrinter 5.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        @keyframes fadeInQr {
+            0%, 65% { opacity: 0; transform: translateY(40px) scale(0.95); pointer-events: none; }
+            100% { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        }
+        .animate-fade-qr {
+            animation: fadeInQr 5.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        body {
+            background-color: #ffffff; /* Fallback */
+            margin: 0;
+            overflow: hidden;
+        }
+        
+        /* The magical scaling wrapper that forces the 1920x1080 Figma aspect ratio to fit the screen */
+        #app-container {
+            width: 1920px;
+            height: 1080px;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform-origin: center center;
+            /* Transform is applied via JS */
+        }
+    </style>
+</head>
+<body class="text-black font-space overflow-hidden w-screen h-screen select-none relative">
+    
+    <!-- Background Image Pattern fills the window -->
+    <div class="fixed inset-0 bg-white z-0"></div>
+    <div class="fixed inset-0 bg-[url('assets/bg.png')] bg-repeat bg-center opacity-10 z-0"></div>
+
+    <!-- 1920x1080 scaling container -->
+    <div id="app-container">
+
+        <!-- Global Flash Overlay -->
+        <div id="flash" class="absolute inset-0 bg-white z-[9999] opacity-0 pointer-events-none"></div>
+
+        <!-- Bagian 1: Halaman Kamera -->
+        <main id="camera-section" class="absolute inset-0 w-full h-full flex flex-col items-center justify-center z-10">
+            
+            <!-- Starburst Ornaments (SVG) -->
+            <div class="absolute top-[0px] left-[15%] w-[600px] h-[600px] text-sjyellow -z-10 starburst pointer-events-none">
+                <svg viewBox="0 0 200 200" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M100 0 L115 50 L190 20 L135 85 L200 120 L125 125 L140 190 L95 140 L30 190 L65 120 L0 100 L65 80 L10 25 L80 55 Z" />
+                </svg>
+            </div>
+            <div class="absolute bottom-[-100px] right-[10%] w-[500px] h-[500px] text-sjyellow -z-10 starburst pointer-events-none" style="animation-delay: -2s;">
+                <svg viewBox="0 0 200 200" fill="currentColor" xmlns="http://www.w3.org/2000/svg" transform="rotate(45)">
+                    <path d="M100 0 L115 50 L190 20 L135 85 L200 120 L125 125 L140 190 L95 140 L30 190 L65 120 L0 100 L65 80 L10 25 L80 55 Z" />
+                </svg>
+            </div>
+            
+            <!-- Header: SPACEJAM Photobooth! -->
+            <div class="relative flex justify-center mt-[-50px] mb-8">
+                <div class="relative inline-block text-center">
+                    <h1 class="text-black text-[180px] leading-none font-franklin tracking-tight">
+                        SPACEJAM
+                    </h1>
+                    <h2 class="absolute -bottom-[20px] right-[-60px] text-sjyellow text-[95px] font-optidom -rotate-6" style="-webkit-text-stroke: 3px #000; text-shadow: none;">
+                        Photobooth!
+                    </h2>
+                </div>
+            </div>
+
+            <!-- Mascot UFO -->
+            <div class="absolute top-[120px] left-[5%] w-[400px] z-30 animate-float drop-shadow-[10px_10px_0px_rgba(0,0,0,0.15)]">
+                <img src="assets/ufo.png" class="w-full -rotate-12 hover:-rotate-[30deg] transition-transform duration-500 cursor-pointer" alt="UFO Mascot">
+            </div>
+            <!-- Mascot 10.png -->
+            <div class="absolute bottom-[50px] right-[2%] w-[550px] z-30 animate-float drop-shadow-[10px_10px_0px_rgba(0,0,0,0.15)]" style="animation-delay: -1.5s;">
+                <img src="assets/10.png" class="w-full -rotate-6 hover:-rotate-12 transition-transform duration-500 cursor-pointer" alt="SpaceJam Mascot 10">
+            </div>
+
+            <!-- Big Black Camera Box ala Figma -->
+            <div class="relative bg-black w-[900px] h-[650px] p-8 flex flex-col items-center justify-between shadow-2xl z-20">
+                
+                <!-- Video Preview Container (White border effect) -->
+                <div class="relative w-full h-[480px] bg-white overflow-hidden border-[4px] border-black mb-4">
+                    <video id="video" class="w-full h-full object-cover transform -scale-x-100" autoplay playsinline></video>
+                    
+                    <!-- Countdown -->
+                    <div id="countdown" class="hidden absolute inset-0 flex items-center justify-center text-[250px] font-franklin text-sjyellow z-20 drop-shadow-lg">
+                        3
+                    </div>
+                </div>
+
+                <!-- Start Capture Button inside the black box -->
+                <button id="start-btn" class="relative px-10 py-3 bg-black border-[3px] border-sjyellow group overflow-hidden cursor-pointer hover:bg-sjyellow transition-colors duration-300 w-auto">
+                    <span class="relative z-10 text-white group-hover:text-black font-franklin text-[32px] uppercase tracking-widest transition-colors duration-300">Start Capture</span>
+                </button>
+                <p id="instruction" class="absolute -bottom-16 text-black font-space font-bold text-2xl uppercase tracking-widest text-center w-full left-0">Get ready for 3 epic shots!</p>
+            </div>
+        </main>
+
+        <!-- Bagian 2: Halaman Hasil -->
+        <main id="result-section" class="hidden absolute inset-0 w-full h-full flex flex-row items-center justify-center gap-[100px] z-20">
+            
+            <!-- Starburst Ornaments for Result Screen -->
+            <div class="absolute top-[10%] right-[30%] w-[800px] h-[800px] text-sjyellow -z-10 starburst pointer-events-none">
+                <svg viewBox="0 0 200 200" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M100 0 L115 50 L190 20 L135 85 L200 120 L125 125 L140 190 L95 140 L30 190 L65 120 L0 100 L65 80 L10 25 L80 55 Z" />
+                </svg>
+            </div>
+
+            <!-- Left: Printer Box and Hanging Strip -->
+            <div class="flex flex-col items-center justify-center shrink-0 relative mt-[-50px] animate-slide-printer z-20">
+                
+                <!-- Small Printer Box on top -->
+                <div class="w-[460px] h-[100px] bg-black shadow-2xl z-20 flex flex-col items-center justify-end pb-3 border-b-8 border-gray-900 rounded-t-2xl relative">
+                    <!-- Lampu Indikator Printer -->
+                    <div class="absolute top-4 right-6 w-3 h-3 bg-green-500 rounded-full shadow-[0_0_10px_#22c55e] animate-pulse"></div>
+                    <!-- Slot Printer -->
+                    <div class="w-[420px] h-4 bg-[#0a0a0a] rounded-full shadow-[inset_0_4px_8px_rgba(0,0,0,1)]"></div>
+                </div>
+                
+                <!-- The area where the photo hangs (overflow hidden masks the strip before it prints) -->
+                <div class="w-[400px] h-[800px] overflow-hidden relative z-10 filter drop-shadow-[0_20px_20px_rgba(0,0,0,0.5)]">
+                    <canvas id="strip-canvas" class="w-full h-full bg-transparent animate-print"></canvas>
+                </div>
+            </div>
+
+            <!-- Right: Actions with Pop-Art Shapes -->
+            <div class="w-[500px] flex flex-col items-center justify-center text-center relative z-10 animate-fade-qr">
+                
+                <!-- Brutalist Container -->
+                <div class="bg-white border-[8px] border-black p-8 w-full relative z-20">
+                    <!-- Deco Shapes moved outwards -->
+                    <div class="absolute -top-12 -left-12 w-20 h-20 bg-sjyellow rounded-full z-[-1]"></div>
+                    <div class="absolute -bottom-10 -right-10 w-20 h-20 bg-sjyellow transform rotate-12 z-[-1]"></div>
+                    
+                    <h2 class="mb-6 leading-[1.1] text-center">
+                        <span class="text-black text-[45px] font-franklin uppercase tracking-tighter" style="text-shadow: none;">
+                            SCAN AND DOWNLOAD YOUR
+                        </span>
+                        <br>
+                        <span class="text-sjyellow text-[60px] font-optidom inline-block -rotate-2 mt-2" style="-webkit-text-stroke: 2px #000; text-shadow: none;">
+                            PHOTOSTRIP!
+                        </span>
+                    </h2>
+                    
+                    <!-- QR Code wrapper without block shadows -->
+                    <div class="p-4 bg-white border-[6px] border-black w-[260px] h-[260px] mx-auto flex flex-col items-center justify-center mb-6">
+                        <div id="qrcode" class="flex flex-col items-center justify-center"></div>
+                    </div>
+
+                    <p class="text-black font-space font-bold text-lg uppercase tracking-widest mb-8">
+                        dont forget to share your experience in spacejam!
+                    </p>
+
+                    <div class="flex flex-col gap-4 w-full">
+                        <a id="download-btn" class="w-full text-center py-4 bg-sjyellow border-[6px] border-black text-black font-franklin text-3xl uppercase hover:bg-black hover:text-sjyellow transition-all cursor-pointer">
+                            Download File
+                        </a>
+                        <button id="retake-btn" class="w-full py-4 bg-white border-[6px] border-black text-black font-franklin text-3xl uppercase hover:bg-gray-200 transition-all cursor-pointer">
+                            Retake Photos
+                        </button>
+                    </div>
+                </div>
+
+                <!-- UFO Mascot pushed further right/top to avoid overlapping the container -->
+                <img src="assets/ufo.png" class="absolute -top-[160px] -right-[150px] w-[250px] z-30 animate-float drop-shadow-[10px_10px_0px_rgba(0,0,0,0.15)] rotate-12" style="animation-delay: -1s;" alt="UFO Mascot">
+            </div>
+        </main>
+    </div>
+
+    <canvas id="photo-canvas" style="display: none;"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="script.js"></script>
+    
+    <!-- Scaling Logic -->
+    <script>
+        function resizeApp() {
+            const app = document.getElementById('app-container');
+            // Menghitung seberapa banyak harus di-scale agar muat di layar (berdasarkan 1920x1080)
+            const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            app.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+        
+        window.addEventListener('resize', resizeApp);
+        // Jalanin pas pertama load
+        resizeApp();
+    </script>
+</body>
+</html>
