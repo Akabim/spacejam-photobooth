@@ -245,6 +245,7 @@ async function showResult() {
             body: formData
         });
         const data = await res.json();
+        console.log(data);
         
         if (data.success) {
             qrcodeContainer.innerHTML = ''; 
