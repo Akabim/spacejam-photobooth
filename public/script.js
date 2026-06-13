@@ -222,35 +222,38 @@ async function showResult() {
     downloadBtn.href = finalImageBase64;
 
     try {
-        // IMGBB API KEY - Dapatkan gratis di https://api.imgbb.com/
-        // Ganti 'TARUH_API_KEY_KAMU_DISINI' dengan API key milikmu
-        const IMGBB_API_KEY = 'df954fc58559e6075da36354ccf387d9'; 
-        
-        if (IMGBB_API_KEY === 'TARUH_API_KEY_KAMU_DISINI') {
-            qrcodeContainer.innerHTML = '<p style="color:#ff00ea; font-size:14px;">(Set API Key ImgBB di script.js untuk fitur QR)</p>';
-            return;
-        }
+        // Freeimage.host - Gratis, tanpa perlu API key!
+        // Dokumentasi: https://freeimage.host/page/api
 
         // Tampilkan loading state
         qrcodeContainer.innerHTML = '<div class="loader"></div><p style="color:#00f3ff; font-size:14px; margin-top:10px;">Uploading & Generating QR... 🚀</p>';
 
-        // Hapus header base64 (data:image/png;base64,)
+        // Konversi base64 ke Blob lalu ke File
         const base64Data = finalImageBase64.split(',')[1];
-        
-        const formData = new FormData();
-        formData.append('image', base64Data);
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Uint8Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const blob = new Blob([byteNumbers], { type: 'image/png' });
 
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        const formData = new FormData();
+        formData.append('source', blob, 'photostrip.png');
+        formData.append('type', 'file');
+        formData.append('action', 'upload');
+        formData.append('format', 'json');
+
+        const res = await fetch('https://freeimage.host/api/1/upload', {
             method: 'POST',
             body: formData
         });
         const data = await res.json();
         console.log(data);
-        
-        if (data.success) {
-            qrcodeContainer.innerHTML = ''; 
+
+        if (data.status_code === 200 && data.image?.url) {
+            qrcodeContainer.innerHTML = '';
             new QRCode(qrcodeContainer, {
-                text: data.data.url,
+                text: data.image.url,
                 width: 200,
                 height: 200,
                 colorDark : "#0a0a1a",
@@ -258,7 +261,7 @@ async function showResult() {
                 correctLevel : QRCode.CorrectLevel.H
             });
         } else {
-            throw new Error(data.error.message || 'Upload gagal');
+            throw new Error(data.error?.message || 'Upload gagal');
         }
     } catch (e) {
         console.error("Upload failed", e);
