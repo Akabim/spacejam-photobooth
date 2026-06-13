@@ -73,7 +73,7 @@ async function startCaptureSequence() {
         await runCountdown();
         capturePhoto();
         triggerFlash();
-        await new Promise(r => setTimeout(r, 1000)); // wait before next countdown
+        await new Promise(r => setTimeout(r, 1000));
     }
 
     instructionEl.innerText = "Processing your strip...";
@@ -102,13 +102,13 @@ function runCountdown() {
         let count = COUNTDOWN_TIME;
         countdownEl.innerText = count;
         countdownEl.classList.remove('hidden');
-        playBeep(); // Beep at 3
+        playBeep();
 
         const interval = setInterval(() => {
             count--;
             if (count > 0) {
                 countdownEl.innerText = count;
-                playBeep(); // Beep at 2, 1
+                playBeep();
             } else {
                 clearInterval(interval);
                 countdownEl.classList.add('hidden');
@@ -121,7 +121,6 @@ function runCountdown() {
 function triggerFlash() {
     flashEl.classList.add('active');
     
-    // Play shutter sound
     try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -147,7 +146,6 @@ function capturePhoto() {
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
     
-    // Make sure we flip it back since video is mirrored via CSS
     ctx.translate(canvas.width, 0);
     ctx.scale(-1, 1);
     
@@ -157,10 +155,8 @@ function capturePhoto() {
 }
 
 async function generateStrip() {
-    // Clear the canvas
     stripCtx.clearRect(0, 0, STRIP_WIDTH, STRIP_HEIGHT);
 
-    // Draw the background frame FIRST
     if (bgImage.complete) {
         stripCtx.drawImage(bgImage, 0, 0, STRIP_WIDTH, STRIP_HEIGHT);
     }
@@ -171,7 +167,6 @@ async function generateStrip() {
         { rot: 1.94, x: 90.09, y: 1377.21 }
     ];
 
-    // Draw photos ON TOP of the frame with specific transforms
     for (let i = 0; i < capturedPhotos.length; i++) {
         if (!configs[i]) continue;
 
@@ -186,18 +181,14 @@ async function generateStrip() {
         const srcY = (drawH - PHOTO_HEIGHT) / 2 / scale;
 
         stripCtx.save();
-        
-        // Rotate from the center of the photo
         stripCtx.translate(configs[i].x + PHOTO_WIDTH / 2, configs[i].y + PHOTO_HEIGHT / 2);
         stripCtx.rotate(configs[i].rot * Math.PI / 180);
         
-        // Draw the cropped photo
         stripCtx.drawImage(img, 
             srcX, srcY, PHOTO_WIDTH / scale, PHOTO_HEIGHT / scale, 
             -PHOTO_WIDTH / 2, -PHOTO_HEIGHT / 2, PHOTO_WIDTH, PHOTO_HEIGHT 
         );
 
-        // Draw yellow border
         stripCtx.lineWidth = 10.45;
         stripCtx.strokeStyle = '#F3C300';
         stripCtx.strokeRect(-PHOTO_WIDTH / 2, -PHOTO_HEIGHT / 2, PHOTO_WIDTH, PHOTO_HEIGHT);
@@ -205,7 +196,6 @@ async function generateStrip() {
         stripCtx.restore();
     }
 
-    // Draw the foreground frame (Layer 3) ON TOP of everything
     if (bgImageLayer3.complete) {
         stripCtx.drawImage(bgImageLayer3, 0, 0, STRIP_WIDTH, STRIP_HEIGHT);
     }
@@ -222,20 +212,22 @@ async function showResult() {
     downloadBtn.href = finalImageBase64;
 
     try {
-        // ImgBB API - https://api.imgbb.com/
-        const IMGBB_API_KEY = 'df954fc58559e6075da36354ccf387d9';
-
-        // Tampilkan loading state
+        // tmpfiles.org - Gratis, tanpa API key! File tersedia 24 jam.
         qrcodeContainer.innerHTML = '<div class="loader"></div><p style="color:#00f3ff; font-size:14px; margin-top:10px;">Uploading & Generating QR... 🚀</p>';
 
-        // Kirim base64 langsung ke ImgBB (tanpa header data:image/...)
+        // Konversi base64 ke Blob
         const base64Data = finalImageBase64.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Uint8Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const blob = new Blob([byteNumbers], { type: 'image/png' });
 
         const formData = new FormData();
-        formData.append('image', base64Data);
-        formData.append('expiration', '600'); // opsional: gambar expired setelah 10 menit
+        formData.append('file', blob, 'photostrip.png');
 
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        const res = await fetch('https://tmpfiles.org/api/v1/upload', {
             method: 'POST',
             body: formData
         });
@@ -243,20 +235,25 @@ async function showResult() {
         if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
 
         const data = await res.json();
-        console.log('ImgBB response:', data);
+        console.log('tmpfiles.org response:', data);
 
-        if (data.success && data.data?.url) {
+        if (data.status === 'success' && data.data?.url) {
+            // Konversi ke direct download link
+            const directUrl = data.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+
             qrcodeContainer.innerHTML = '';
-            new QRCode(qrcodeContainer, {
-                text: data.data.url,
-                width: 200,
-                height: 200,
-                colorDark: "#0a0a1a",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
+
+            // QRServer API — tidak perlu library JS tambahan
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(directUrl)}&bgcolor=ffffff&color=0a0a1a&ecc=H`;
+            const qrImg = document.createElement('img');
+            qrImg.src = qrUrl;
+            qrImg.width = 200;
+            qrImg.height = 200;
+            qrImg.alt = 'QR Code';
+            qrImg.style.borderRadius = '8px';
+            qrcodeContainer.appendChild(qrImg);
         } else {
-            throw new Error(data.error?.message || 'Upload gagal, cek API key.');
+            throw new Error(data.message || 'Upload gagal.');
         }
     } catch (e) {
         console.error("Upload failed:", e);
